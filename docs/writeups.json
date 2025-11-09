@@ -1,0 +1,30 @@
+[
+  {
+    "slug": "web-xss-lab",
+    "title": "Cross-Site Scripting (XSS) Lab",
+    "description": "A walkthrough of reflected XSS exploitation, including payload crafting and CSP bypass techniques.",
+    "tags": ["Web", "XSS", "JavaScript"],
+    "date": "2025-11-09"
+  },
+  {
+    "slug": "crypto-rsa-attack",
+    "title": "RSA Weak Key Exploitation",
+    "description": "A breakdown of low-exponent RSA key recovery using modular arithmetic and practical examples in CTFs.",
+    "tags": ["Crypto", "CTF", "Mathematics"],
+    "date": "2025-10-31"
+  },
+  {
+    "slug": "forensics-disk",
+    "title": "Disk Forensics: Image Analysis",
+    "description": "An introduction to disk imaging, file carving, and timeline analysis in digital forensics.",
+    "tags": ["Forensics", "OSINT", "CTF"],
+    "date": "2025-09-15"
+  },
+  {
+    "slug": "loss",
+    "title": "Disk Forensics: Image Analysis",
+    "description": "An introduction to disk imaging, file carving, and timeline analysis in digital forensics.",
+    "tags": ["Forensics", "OSINT", "CTF"],
+    "date": "2025-09-15"
+  }
+]
