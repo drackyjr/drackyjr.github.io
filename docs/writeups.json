@@ -21,6 +21,13 @@
     "date": "2025-09-15"
   },
   {
+    "slug": "Mahem",
+    "title": "THM Mayhem ",
+    "description": "Investigate traffic of a C2 connection",
+    "tags": ["Blue Team", "C2"],
+    "date": "2025-05-21"
+  },
+  {
     "slug": "block",
     "title": "THM Block",
     "description": "Encryption? What encryption?",
