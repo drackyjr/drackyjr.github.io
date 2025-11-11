@@ -21,10 +21,10 @@
     "date": "2025-09-15"
   },
   {
-    "slug": "Dave'sBlog",
-    "title": "Dave'sBlog",
-    "description": "My friend Dave made his own blog! You should go check it out.",
-    "tags": ["jwt","json","pwn","reverse shell","nosql injection","rce"],
-    "date": "2025-06-21"
+    "slug": "block",
+    "title": "THM Block",
+    "description": "Encryption? What encryption?",
+    "tags": ["Blue Team"],
+    "date": "2025-05-06"
   }
 ]
