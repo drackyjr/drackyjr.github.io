@@ -475,7 +475,7 @@ cat output.txt
 
 **AES Encryption:** The cipher used to hide commands from security analysts
 
-**Magic Bytes (0xDEADBEEF):** A signature that identifies Havoc traffic
+**Magic Bytes (0xDEADBEEF):** A signature that identifies Havoc traffic.
 
 **PCAP:** A file containing captured network traffic
 
