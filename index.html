@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dracky Writeups</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="assets/favicon.ico">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="#" class="logo">
+                <img src="assets/logo.png" alt="Logo">
+                <span> Wr1T3UpS  ( Cl1ck on Bl0g Titl3 )</span>
+            </a>
+            <a href="about.html" class="about-link">About</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="homepage" class="page-section">
+            <h1 class="page-title">Recent Writeups</h1>
+            <div id="writeup-list" class="writeup-grid">
+                <!-- Writeup cards will be loaded here by JavaScript -->
+            </div>
+        </div>
+
+        <div id="writeup-viewer" class="page-section hidden">
+            <button id="back-button" class="back-button">&larr; Back to all writeups</button>
+            <h1 id="writeup-title" class="page-title"></h1>
+            <div id="writeup-content" class="markdown-body">
+                <!-- Markdown content will be rendered here -->
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy;2021-2025 Drackyjr. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
