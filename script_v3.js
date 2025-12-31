@@ -1,4 +1,16 @@
 // Initialize Marked.js and Highlight.js
+
+import { BLOG_FILES } from "./docs/blogIndex.js";
+
+BLOG_FILES.forEach(file => {
+    fetch(`./docs/${file}`)
+        .then(res => res.text())
+        .then(md => {
+            renderMarkdown(md, file);
+        })
+        .catch(err => console.error(err));
+});
+
 marked.setOptions({
     renderer: new marked.Renderer(),
     highlight: function (code, lang) {
