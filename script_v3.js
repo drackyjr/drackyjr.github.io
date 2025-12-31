@@ -19,18 +19,13 @@ const backButton = document.getElementById('back-button');
 const searchToggle = document.getElementById('search-toggle');
 const blogSearch = document.getElementById('blog-search');
 
-let allBlogData = []; // Store all blogs for searching
+let allBlogData = [];
 let isLoaded = false;
 
-// --- Helper: Parse Frontmatter ---
 function parseFrontmatter(text) {
     const regex = /^---\s*([\s\S]*?)\s*---/;
     const match = regex.exec(text);
-    const result = {
-        metadata: {},
-        content: text
-    };
-
+    const result = { metadata: {}, content: text };
     if (match) {
         const lines = match[1].split('\n');
         lines.forEach(line => {
@@ -48,10 +43,8 @@ function parseFrontmatter(text) {
     return result;
 }
 
-// --- Function to render cards to the UI ---
 function renderCards(data) {
     blogList.innerHTML = '';
-
     if (data.length === 0) {
         blogList.innerHTML = `<p class="page-title" style="text-align: center; width: 100%;">No matches found.</p>`;
         return;
@@ -61,13 +54,9 @@ function renderCards(data) {
         const card = document.createElement('div');
         card.className = 'blog-card';
         card.setAttribute('data-slug', blog.slug);
-
-        // Milestone Index: 1, 2, 3... starting from the top
-        const milestoneIndex = index + 1;
-        card.setAttribute('data-milestone', milestoneIndex);
-
+        // Milestone Descending: Total down to 1
+        card.setAttribute('data-milestone', data.length - index);
         const tagsHtml = blog.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
-
         card.innerHTML = `
             <div class="card-cover">
                 <img src="${blog.cover}" alt="${blog.title} Cover" onerror="this.src='assets/background.gif'">
@@ -80,14 +69,10 @@ function renderCards(data) {
             </div>
         `;
         blogList.appendChild(card);
-
-        card.addEventListener('click', () => {
-            navigateToBlog(blog.slug);
-        });
+        card.addEventListener('click', () => navigateToBlog(blog.slug));
     });
 }
 
-// --- Function to fetch and display blog cards automatically ---
 async function loadBlogs() {
     try {
         const response = await fetch('./docs/');
@@ -95,70 +80,66 @@ async function loadBlogs() {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        const links = Array.from(doc.querySelectorAll('a'))
+        let links = Array.from(doc.querySelectorAll('a'))
             .map(a => a.getAttribute('href'))
             .filter(href => href && !href.startsWith('..') && !href.includes('writeups.json'));
 
         allBlogData = [];
+        for (let href of links) {
+            // Robust Path Handling: Remove leading/trailing slashes/backslashes and the 'docs' prefix
+            let cleanName = href.replace(/^[\\\/]docs[\\\/]/, '')
+                .replace(/^[\\\/]/, '')
+                .replace(/[\\\/]$/, '');
 
-        for (const href of links) {
-            let slug, fetchUrl, coverUrl;
+            if (!cleanName || cleanName === 'docs' || cleanName.includes('index.html')) continue;
 
-            if (href.endsWith('.md')) {
-                slug = href.replace('.md', '');
-                fetchUrl = `./docs/${href}`;
-                coverUrl = `./docs/${slug}.png`;
-            } else if (!href.includes('.')) {
-                slug = href.replace(/\/$/, '');
-                fetchUrl = `./docs/${slug}/index.md`;
-                coverUrl = `./docs/${slug}/images/logo.png`;
-            } else {
-                continue;
-            }
+            let slug, fetchUrl, coverUrl, isFolder;
+
+            if (cleanName.endsWith('.md')) {
+                slug = cleanName.replace('.md', '');
+                fetchUrl = `./docs/${cleanName.replace(/\\/g, '/')}`;
+                coverUrl = `./docs/${slug.replace(/\\/g, '/')}.png`;
+                isFolder = false;
+            } else if (!cleanName.includes('.')) {
+                slug = cleanName;
+                fetchUrl = `./docs/${slug}/index.md`.replace(/\\/g, '/');
+                coverUrl = `./docs/${slug}/images/logo.png`.replace(/\\/g, '/');
+                isFolder = true;
+            } else continue;
 
             try {
                 const postResponse = await fetch(fetchUrl);
                 if (!postResponse.ok) continue;
-
                 const text = await postResponse.text();
                 const processed = parseFrontmatter(text);
                 const meta = processed.metadata;
-
                 allBlogData.push({
-                    slug: slug,
-                    isFolder: !href.endsWith('.md'),
+                    slug: slug.replace(/\\/g, '/'),
+                    isFolder: isFolder,
                     title: meta.title || slug.replace(/_/g, ' ').replace(/-/g, ' '),
                     date: meta.date || 'Unknown Date',
                     description: meta.description || 'No description available.',
                     tags: Array.isArray(meta.tags) ? meta.tags : [],
                     cover: meta.cover || coverUrl
                 });
-            } catch (err) {
-                console.warn(`Could not process blog: ${href}`, err);
-            }
+            } catch (err) { }
         }
 
-        // Final Robust Sorting: Chronological (Oldest First)
+        // Sorting: Newer First (Recent blogs at the top)
         allBlogData.sort((a, b) => {
-            if (a.date === 'Unknown Date' && b.date === 'Unknown Date') return 0;
-            if (a.date === 'Unknown Date') return 1; // Unknown at bottom
-            if (b.date === 'Unknown Date') return -1;
-
-            const timeA = new Date(a.date).getTime();
-            const timeB = new Date(b.date).getTime();
-            return timeA - timeB;
+            const dateA = a.date === 'Unknown Date' ? new Date('1970-01-01') : new Date(a.date);
+            const dateB = b.date === 'Unknown Date' ? new Date('1970-01-01') : new Date(b.date);
+            return dateB - dateA;
         });
 
         renderCards(allBlogData);
         isLoaded = true;
-
     } catch (error) {
-        console.error("Error auto-loading blogs:", error);
+        console.error("Error loading blogs:", error);
         blogList.innerHTML = `<p style="color:red;">Failed to auto-detect blogs.</p>`;
     }
 }
 
-// --- Search Logic ---
 searchToggle.addEventListener('click', () => {
     blogSearch.classList.toggle('active');
     blogSearch.classList.toggle('hidden');
@@ -180,61 +161,34 @@ blogSearch.addEventListener('input', (e) => {
     renderCards(filtered);
 });
 
-// Helper to detect and transform video links into embeds
 function processVideoLinks(content) {
     const ytIdRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/;
-    content = content.replace(/<img[^>]+src="([^"]+)"[^>]*>/g, (match, src) => {
+    return content.replace(/<img[^>]+src="([^"]+)"[^>]*>/g, (match, src) => {
         const ytMatch = src.match(ytIdRegex);
-        if (ytMatch) {
-            return `<div class="video-container">
-                <iframe src="https://www.youtube.com/embed/${ytMatch[1]}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-            </div>`;
-        }
-        return match;
-    });
-    content = content.replace(/<a[^>]+href="([^"]+)"[^>]*>(.*?)<\/a>|(?<!src="|href=")(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)[a-zA-Z0-9_-]{11}(?:[^\s"<>]*))/g, (match, href, text, plainUrl) => {
+        return ytMatch ? `<div class="video-container"><iframe src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen></iframe></div>` : match;
+    }).replace(/<a[^>]+href="([^"]+)"[^>]*>(.*?)<\/a>|(?<!src="|href=")(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)[a-zA-Z0-9_-]{11})/g, (match, href, text, plainUrl) => {
         const url = href || plainUrl;
         const ytMatch = url.match(ytIdRegex);
-        if (ytMatch) {
-            if (plainUrl || (text && (text.toLowerCase().includes('video') || text.toLowerCase().includes('demo') || url.includes(text)))) {
-                return `<div class="video-container">
-                    <iframe src="https://www.youtube.com/embed/${ytMatch[1]}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-                </div>`;
-            }
-        }
-        return match;
+        return ytMatch ? `<div class="video-container"><iframe src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen></iframe></div>` : match;
     });
-    return content;
 }
 
-// Function to fetch and render a specific Markdown file
 async function loadMarkdown(slug) {
     try {
         if (!isLoaded) await loadBlogs();
         const blogInfo = allBlogData.find(b => b.slug === slug);
         const fetchUrl = blogInfo && !blogInfo.isFolder ? `./docs/${slug}.md` : `./docs/${slug}/index.md`;
         const response = await fetch(fetchUrl);
-        if (!response.ok) throw new Error(`Blog '${slug}' not found.`);
         const rawText = await response.text();
         const processed = parseFrontmatter(rawText);
         const htmlContent = marked.parse(processed.content);
-        let finalContent;
-        if (blogInfo && !blogInfo.isFolder) {
-            finalContent = htmlContent.replace(/src="(?!https?:\/\/)([^"]+)"/g, `src="./docs/$1"`);
-        } else {
-            finalContent = htmlContent.replace(/src="(?!https?:\/\/)([^"]+)"/g, `src="./docs/${slug}/$1"`);
-        }
+        let finalContent = blogInfo && !blogInfo.isFolder ? htmlContent.replace(/src="(?!https?:\/\/)([^"]+)"/g, `src="./docs/$1"`) : htmlContent.replace(/src="(?!https?:\/\/)([^"]+)"/g, `src="./docs/${slug}/$1"`);
         finalContent = processVideoLinks(finalContent);
         blogTitle.textContent = processed.metadata.title || slug;
         blogContent.innerHTML = finalContent;
-        blogContent.querySelectorAll('pre code').forEach((block) => {
-            hljs.highlightElement(block);
-        });
+        blogContent.querySelectorAll('pre code').forEach((block) => hljs.highlightElement(block));
         switchView('viewer');
     } catch (error) {
-        console.error("Error loading Markdown:", error);
-        blogTitle.textContent = "Error Loading Blog";
-        blogContent.innerHTML = `<p style="color:red;">${error.message}</p>`;
         switchView('viewer');
     }
 }
@@ -270,29 +224,14 @@ function navigateToHomepage() {
     switchView('homepage');
 }
 
-window.addEventListener('popstate', (event) => {
-    if (event.state && event.state.slug) {
-        loadMarkdown(event.state.slug);
-    } else {
-        switchView('homepage');
-    }
-});
+window.addEventListener('popstate', (e) => e.state && e.state.slug ? loadMarkdown(e.state.slug) : switchView('homepage'));
 
 function handleInitialRoute() {
     const path = window.location.hash;
-    if (path.startsWith('#/blogs/')) {
-        const slug = path.split('#/blogs/')[1];
-        loadMarkdown(slug);
-    } else {
-        loadBlogs();
-        switchView('homepage');
-    }
+    if (path.startsWith('#/blogs/')) loadMarkdown(path.split('#/blogs/')[1]);
+    else { loadBlogs(); switchView('homepage'); }
 }
 
 backButton.addEventListener('click', navigateToHomepage);
-document.querySelector('.logo').addEventListener('click', (event) => {
-    event.preventDefault();
-    navigateToHomepage();
-});
-
+document.querySelector('.logo').addEventListener('click', (e) => { e.preventDefault(); navigateToHomepage(); });
 document.addEventListener('DOMContentLoaded', handleInitialRoute);
