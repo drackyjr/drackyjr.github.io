@@ -6,5 +6,7 @@ export const BLOG_FILES = [
   "python-for-pentesting.md",
   "sqli.md",
   "WEBTALK_Blog.md",
-  "xss.md"
+  "xss.md",
+  "Mahem",
+  "block"
 ];
