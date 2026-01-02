@@ -8,5 +8,5 @@ export const BLOG_FILES = [
   "WEBTALK_Blog.md",
   "xss.md",
   "Mahem",
-  "block"
+  "block.md"
 ];
