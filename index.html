@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dracky Blogs</title>
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="icon" href="assets/favicon.ico">
+</head>
+
+<body>
+    <div id="background-overlay"></div>
+    <header>
+        <div class="container">
+            <a href="#" class="logo">
+                <img src="assets/logo.png" alt="Logo">
+                <span> Dracky Blogs </span>
+            </a>
+            <div class="nav-links">
+                <div class="search-wrapper">
+                    <input type="text" id="blog-search" placeholder="Search blogs..." class="hidden">
+                    <button id="search-toggle" class="search-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </button>
+                </div>
+                <a href="about.html" class="about-link">About</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="homepage" class="page-section">
+            <h1 class="page-title">Recent Blogs</h1>
+            <div id="blog-list" class="blog-grid">
+                <!-- Blog cards will be loaded here by JavaScript -->
+            </div>
+        </div>
+
+        <div id="blog-viewer" class="page-section hidden">
+            <button id="back-button" class="back-button">&larr; Back to all blogs</button>
+            <h1 id="blog-title" class="page-title"></h1>
+            <div id="blog-content" class="markdown-body">
+                <!-- Markdown content will be rendered here -->
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy;2026 Drackyjr. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="./script_v3.js"></script>
+
+</body>
+
+</html>
