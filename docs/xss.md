@@ -2,7 +2,7 @@
 title: Cross-Site Scripting
 tags: [xss, notes]
 description:  use for scripting and pentesting
-date: 2025-10-03
+date: 2026-04-02
 ---
 # PART 1: Notes
 
