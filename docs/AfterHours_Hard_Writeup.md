@@ -1,7 +1,7 @@
 ---
 title: After Hours
 tags: [ctf, Tryhackme]
-description:  Networking
+description:  forensics
 date: 2026-08-10
 ---
 
