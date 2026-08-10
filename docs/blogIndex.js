@@ -9,6 +9,6 @@ export const BLOG_FILES = [
   "xss.md",
   "Mahem/index.md",
   "block.md",
-  "soc-analyst.md"
+  "soc-analyst.md",
   "AfterHours_Hard_Writeup.md"
 ];
