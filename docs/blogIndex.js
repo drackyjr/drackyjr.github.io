@@ -10,4 +10,5 @@ export const BLOG_FILES = [
   "Mahem/index.md",
   "block.md",
   "soc-analyst.md"
+  "AfterHours_Hard_Writeup.md"
 ];
