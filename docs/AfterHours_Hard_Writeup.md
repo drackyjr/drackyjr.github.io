@@ -1,3 +1,11 @@
+---
+title: After Hours
+tags: [ctf, Tryhackme]
+description:  Networking
+date: 2026-08-10
+---
+
+
 # After Hours — Hard Windows DFIR Lab Write-up
 
 ## Overview
